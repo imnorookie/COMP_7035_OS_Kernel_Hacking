@@ -89,6 +89,8 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
+    struct list_elem sleeping_elem;     /* List element for sleeping threads list. */
+    long long ticks_to_wakeup;          /* tick count this thread should wake up on (if slept). */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */

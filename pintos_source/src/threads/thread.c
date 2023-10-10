@@ -28,6 +28,10 @@ static struct list ready_list;
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
 
+/* List of all sleeping processes, that is, processes that have
+   had timer_sleep called on them. */
+static struct list sleeping_list;
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -46,6 +50,7 @@ struct kernel_thread_frame
   };
 
 /* Statistics. */
+static long long global_ticks;  /* # of timer ticks since OS boot. */
 static long long idle_ticks;    /* # of timer ticks spent idle. */
 static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
@@ -70,6 +75,8 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
+bool sort_sleeping_threads(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+void wake_up_threads(int64_t ticks);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -92,6 +99,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  list_init (&sleeping_list);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -582,3 +590,43 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+bool sort_sleeping_threads(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
+  int64_t a_ticks, b_ticks;
+  a_ticks = list_entry(a, struct thread, sleeping_elem)->ticks_to_wakeup;
+  b_ticks = list_entry(b, struct thread, sleeping_elem)->ticks_to_wakeup;
+  return (a_ticks < b_ticks);
+}
+
+void wake_up_threads(int64_t ticks){
+    struct list_elem *e;
+    for (e = list_begin (&sleeping_list); e != list_end (&sleeping_list);
+     e = list_next (e))
+    {
+      struct thread *t = list_entry(e, struct thread, sleeping_elem);
+      if ((t->ticks_to_wakeup) <= ticks) {
+        printf("waking up now");
+        list_push_back(&ready_list, &t->elem);
+        t->status = THREAD_READY;
+        schedule();
+      }
+    }
+}
+
+void thread_sleep(int64_t ticks_to_sleep) {
+  struct thread *t = thread_current();
+  // enum intr_level old_level;
+  ASSERT (intr_get_level() == INTR_OFF);
+  if (t == idle_thread) return;
+            // do nothing with the idle thread, it should never be slept
+            // might need to be in the ready queue see:, ask jeeho 4 confirmaiton
+            // https://lisha.ufsc.br/teaching/dos/exercises/idle.html
+  // old_level = intr_disable ();
+  t->ticks_to_wakeup = ticks_to_sleep;
+  list_insert_ordered(&sleeping_list, &t->sleeping_elem,sort_sleeping_threads,NULL); 
+  // list_push_front(&sleeping_list, &t->sleeping_elem);
+  // TODO: ask jeeho if inserting sorted is fine or too much computation per sleep.
+  thread_block();
+  // intr_set_level(old_level);
+}
+
