@@ -16,20 +16,21 @@ This repository contains the code and documentation for Assignment 2. In this as
 
 The information at this link: 
 
-> [https://www.scs.stanford.edu/23wi-cs212/reference/index.html](url)
+> [https://www.scs.stanford.edu/23wi-cs212/reference/index.html](https://www.scs.stanford.edu/23wi-cs212/reference/index.html)
 
 
 1.	You must implement void timer_sleep (int64_t ticks) as described in
 
->  [https://www.scs.stanford.edu/23wi-cs212/pintos/pintos_2.html](url)
+>  [https://www.scs.stanford.edu/23wi-cs212/pintos/pintos_2.html](https://www.scs.stanford.edu/23wi-cs212/pintos/pintos_2.html)
 
 2.	You will have to do a documentation like as in
-> [https://www.scs.stanford.edu/23wi-cs212/pintos/pintos_9.html](url)
+> [https://www.scs.stanford.edu/23wi-cs212/pintos/pintos_9.html](https://www.scs.stanford.edu/23wi-cs212/pintos/pintos_9.html)
 
 Pintos reference manual is available online at
-> [https://web.stanford.edu/class/cs140/projects/pintos/pintos.pdf](url)
+> [https://web.stanford.edu/class/cs140/projects/pintos/pintos.pdf](https://web.stanford.edu/class/cs140/projects/pintos/pintos.pdf)
 
 ## Getting Started <a name="start"></a>
+
 
 To get started with this project, you'll need to clone this repository:
 
