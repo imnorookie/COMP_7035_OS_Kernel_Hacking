@@ -5,18 +5,12 @@
 This repository contains the code and documentation for Assignment 2. In this assignment, we are tasked with implementing the **timer_sleep** function as described in the **Pintos** documentation. Additionally, we need to create documentation similar to the format found in Pintos reference manual.
 
 ## Table of Contents
-
-[Getting Started](url)
-
-[Documentation](url)
-
-[Report](url)
-
-[Team Contributions](url)
-
-[Debugging Efforts](url)
-
-[Presentation](url)
+[Getting Started](#start)<br>
+[Documentation](#documentation)<br>
+[Report](#report)<br>
+[Team Contributions](#team)<br>
+[Debugging Efforts](#debugging)<br>
+[Presentation](#presentation)<br>
 
 ### Request:
 
@@ -35,18 +29,18 @@ The information at this link:
 Pintos reference manual is available online at
 > [https://web.stanford.edu/class/cs140/projects/pintos/pintos.pdf](url)
 
-## Getting Started
+## Getting Started <a name="start"></a>
 
 To get started with this project, you'll need to clone this repository:
 
 > ``git clone https://github.com/imnorookie/COMP_7035_OS_Kernel_Hacking.git``
 
 
-## Documentation
+## Documentation <a name="documentation"></a>
 
 We have provided documentation in the docs folder, following the format specified in the assignment instructions. The main documentation file is **sleep_ref.txt**, which contains details about the timer_sleep function.
 
-## Report
+## Report <a name="report"></a>
 
 Our report for this assignment is available in PDF format. It consists of the following sections:
 
@@ -66,11 +60,11 @@ This section outlines the specific contributions made by each team member to the
 We document the challenges and debugging efforts encountered during the development process.
 
 
-## Team Contributions
+## Team Contributions <a name="team"></a>
 
-## Debugging Efforts
+## Debugging Efforts <a name="debugging"></a>
 
-## Presentation
+## Presentation <a name="presentation"></a>
 
 We will present our work during the upcoming lab session, providing a detailed overview of our code, documentation, and the challenges we faced during development.
 
