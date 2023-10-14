@@ -605,11 +605,13 @@ void wake_up_threads(int64_t ticks){
     {
       struct thread *t = list_entry(e, struct thread, sleeping_elem);
       if ((t->ticks_to_wakeup) <= ticks) {
-        printf("waking up now");
         list_push_back(&ready_list, &t->elem);
         t->status = THREAD_READY;
-        schedule();
-      }
+        list_remove(e);
+        // schedule();
+      } else {
+        return; // we are stepping thru the list which is inserted into sorted order.
+      }         // logically we can stop here
     }
 }
 
