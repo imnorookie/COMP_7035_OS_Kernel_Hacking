@@ -26,11 +26,6 @@ of this document.
 
 ---- DATA STRUCTURES ----
 
->> Copy here the declaration of each new or changed `struct' or `struct'
->> member, global or static variable, `typedef', or enumeration.
->> Identify the purpose of each in 25 words or less.
-
-
 In order for sleep to work correctly, we need to keep track of when each 
 "slept" thread is to be woken up. We modify the struct thread as defined below
 in order to do so.
