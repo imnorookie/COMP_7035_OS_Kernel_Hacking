@@ -611,24 +611,19 @@ void wake_up_threads(int64_t ticks){
         // schedule();
       } else {
         return; // we are stepping thru the list which is inserted into sorted order.
-      }         // logically we can stop here
-    }
+      }         // logically we can stop iterating as soon as we see a thread that 
+    }           // shouldn't be woken up.
 }
 
 void thread_sleep(int64_t ticks_to_sleep) {
   struct thread *t = thread_current();
-  // enum intr_level old_level;
   ASSERT (intr_get_level() == INTR_OFF);
   if (t == idle_thread) return;
             // do nothing with the idle thread, it should never be slept
             // might need to be in the ready queue see:, ask jeeho 4 confirmaiton
             // https://lisha.ufsc.br/teaching/dos/exercises/idle.html
-  // old_level = intr_disable ();
   t->ticks_to_wakeup = ticks_to_sleep;
   list_insert_ordered(&sleeping_list, &t->sleeping_elem,sort_sleeping_threads,NULL); 
-  // list_push_front(&sleeping_list, &t->sleeping_elem);
-  // TODO: ask jeeho if inserting sorted is fine or too much computation per sleep.
   thread_block();
-  // intr_set_level(old_level);
 }
 
