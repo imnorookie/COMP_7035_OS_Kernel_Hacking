@@ -1,0 +1,189 @@
+                         +-----------------+
+                         |    COMP 7035    |
+                         |      A1P2       |
+                         | DESIGN DOCUMENT |
+                         +-----------------+
+
+---- GROUP ----
+
+Jaskaran Chahal  <A00965733>
+Parth Chaturvedi <?????????>
+Jugraj Chouhan   <?????????>
+Binger Yu        <?????????>
+
+---- PRELIMINARIES ----
+
+Exchanged help with Sami Roudgarian (A01294122) throughout the last two weeks
+working on this assignment. We kept close correspondence and it made the final
+deliverable much easier to reach. Moreover, surface-level google searches were
+made on topics common in Operating Systems such as "idle threads," of whose
+first results were valuable for design decisions explained in the later parts
+of this document.
+
+
+                                 THREAD_SLEEP
+                                 ===========
+
+---- DATA STRUCTURES ----
+
+>> Copy here the declaration of each new or changed `struct' or `struct'
+>> member, global or static variable, `typedef', or enumeration.
+>> Identify the purpose of each in 25 words or less.
+
+
+In order for sleep to work correctly, we need to keep track of when each 
+"slept" thread is to be woken up. We modify the struct thread as defined below
+in order to do so.
+Added to struct thread:
+    /* Members for implementiong thread_sleep(). */
+    struct list_elem sleeping_elem;     /* List element for sleeping threads list. */
+    long long ticks_to_wakeup;          /* tick count this thread should wake up on (if slept). */
+
+Additionally, we ought to keep track of each thread that is slept,
+we do this by declaring a global variable in thread.c called 
+"sleeping_list," as seen below:
+Added to thread.c:
+/* List of all sleeping processes, that is, processes that have
+   had timer_sleep called on them and are yet to be woken up. */
+static struct list sleeping_list;
+
+
+
+---- ALGORITHMS ----
+
+We will briefly describe our implementation with explanations immediately
+followed by code snippets. We hope this will let you dive into our thought 
+process better as it some-what follows our workflow.
+
+An applications programmer must first make a call to timer_sleep to sleep a thread. 
+As it is in the fresh source's naive implementation, this function causes the
+thread to busy wait. As such, we disable interrupts and make an external call to 
+"thread_sleep()," the function that has to be implemented as per the assignment's
+problem statement. Explanations for why we disable the interrupt is expounded upon 
+in the immediately following SYNCHRONIZATION section.
+
+void
+timer_sleep (int64_t ticks) 
+{
+  enum intr_level old_level;
+  int64_t start = timer_ticks ();
+  int64_t ticks_to_sleep = start + ticks;
+  old_level = intr_disable();  
+  if (timer_elapsed(start) < ticks)
+    thread_sleep(ticks_to_sleep); // have to move code into thread.c, can't access
+                                        // lists, idle_thread, etc. otherwise
+  intr_set_level(old_level);
+}
+
+As can be discerned above, timer_sleep eventually calls thread_sleep. We want
+to set the thread's ticks_to_wakeup, insert it into sleeping_list in sorted
+order, and block it. thread_sleep does this. We insert into sleeping_list in
+sorted order (descending with respect to ticks_to_wakeup) to maintain a queue 
+for the list. This way, the code that is executed to wake up threads can 
+iterate through until it can no longer wake one and immediately stop doing so.
+Also of note, we ensure we are not sleeping the idle thread. As our
+implementation requires some form of depopulating the ready list
+(and populating the sleeping_list), it is forseeable to reach a situation where
+we have an empty ready_list and the idle_thread exists to be the running thread
+in these circumstances. If the idle_thread is slept in this situation, then 
+there will be problems.
+
+void thread_sleep(int64_t ticks_to_sleep) {
+  struct thread *t = thread_current();
+  ASSERT (intr_get_level() == INTR_OFF);
+  if (t == idle_thread) return; // do nothing with idle thread, shud never be slept
+  t->ticks_to_wakeup = ticks_to_sleep;
+  list_insert_ordered(&sleeping_list, &t->sleeping_elem,sort_sleeping_threads,NULL); 
+  thread_block();
+}
+
+The below is the sorting function used in list_insert_ordered in thread_sleep.
+bool sort_sleeping_threads(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
+  int64_t a_ticks, b_ticks;
+  a_ticks = list_entry(a, struct thread, sleeping_elem)->ticks_to_wakeup;
+  b_ticks = list_entry(b, struct thread, sleeping_elem)->ticks_to_wakeup;
+  return (a_ticks < b_ticks);
+}
+
+And finally, we eventually want to wake-up threads. We utilize PintOS' 
+timer_interrupt in order to do so. It executes a non-interruptable function 
+every CPU tick. We've created a function to iterate through our sleeping_list
+and wake-up threads and call it inside of our timer_interrupt. 
+See the code snippets below:
+
+void wake_up_threads(int64_t ticks){
+    struct list_elem *e;
+    for (e = list_begin (&sleeping_list); e != list_end (&sleeping_list);
+     e = list_next (e))
+    {
+      struct thread *t = list_entry(e, struct thread, sleeping_elem);
+      if ((t->ticks_to_wakeup) <= ticks) {
+        list_push_back(&ready_list, &t->elem);
+        t->status = THREAD_READY;
+        list_remove(e);
+      } else {
+        return; // we are stepping thru the list which is inserted into sorted order.
+      }         // logically we can stop iterating as soon as we see a thread that 
+    }           // shouldn't be woken up.
+}
+
+/* Timer interrupt handler. */
+static void
+timer_interrupt (struct intr_frame *args UNUSED)
+{
+  ticks++;
+  thread_tick ();
+  wake_up_threads(ticks); // our change here
+}
+
+
+
+---- SYNCHRONIZATION ----
+
+We maintain synchronicity by disabling interrupts before sleeping
+a thread and re-enabling them immediately afterwards. This is to ensure a 
+thread is added to the sleeping_list before the next timer_interrupt occurs,
+avoiding race conditions. Generally, disabling interrupts to maintain mutual 
+exclusion is frowned upon. However, because the sleeping_list is a critical
+region of memory accessed by the timer_interrupt's handler, it is a necessary 
+evil to avoid deadlocking. 
+
+To qualify this, imagine a thread T calling timer_sleep(400) with an 
+implementation that enforces mutual exclusion via a semaphore or lock. It is
+possible for the timer_interrupt to fire off after thread T enters
+timer_sleep's critical section, whether through successfully decrementing a 
+semaphore or successfully acquiring a lock. The timer_interrupt will then attempt
+to modify sleeping_list (waking up the threads it should), however, it cannot 
+acquire sleeping_list's lock or successfully decrement it's semaphore, and 
+since it is an interrupt handler, it cannot be slept. This leads to a deadlock
+that freezes the entire system (assuming a single processor).
+
+As such, synchronicity, mutual exclusion, and data coherence with our
+sleeping_list must be maintained by a hard disabling of interrupts.
+
+---- RATIONALE ----
+Advantages:
+- Efficient waking-up of threads as we maintain a "queue" structure for our
+  sleeping_list (we always have the earliest-to-be-woken-up thread at the 
+  front).
+- Atomicity is maintained by disabling interrupts, a thread trying to sleep
+  will be guaranteed to have been slept by the time the next timer_interrupt
+  fires off.
+- No busy waiting, threads can sleep while the CPU does other work.
+- Multiple threads sleeping scales well with our solution as they are added
+  to the sleeping_list in a sorted order, the timer_interrupt does not need
+  to step through unnecessary nodes on a linked list to wake up the right
+  threads.
+
+Disadvantages:
+- Starvation can occur as priority scheduling is not enabled. A thread can be
+  sleeping alongside other threads in a manner where it rarely gets executed.
+- The aspect of adding threads into the sleeping_list in sorted order can be
+  costly in practice with hundreds or thousands of threads.
+- If we reach a state of many blocking and sleeping threads, the idle thread
+  will be ran more and more. There could be potential problems with that.
+
+In conclusion, there is overhead with sleeping a thread in our solution as well
+as starvation concerns due to a lack of priority scheduling, however, our
+solution maintains an efficient ordering of slept lists and solves the problem
+of wasted CPU cycles induced by busy waiting.

@@ -29,7 +29,7 @@ static struct list ready_list;
 static struct list all_list;
 
 /* List of all sleeping processes, that is, processes that have
-   had timer_sleep called on them. */
+   had timer_sleep called on them and are yet to be woken up. */
 static struct list sleeping_list;
 
 /* Idle thread. */
@@ -50,7 +50,6 @@ struct kernel_thread_frame
   };
 
 /* Statistics. */
-static long long global_ticks;  /* # of timer ticks since OS boot. */
 static long long idle_ticks;    /* # of timer ticks spent idle. */
 static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
@@ -608,7 +607,6 @@ void wake_up_threads(int64_t ticks){
         list_push_back(&ready_list, &t->elem);
         t->status = THREAD_READY;
         list_remove(e);
-        // schedule();
       } else {
         return; // we are stepping thru the list which is inserted into sorted order.
       }         // logically we can stop iterating as soon as we see a thread that 
